@@ -219,19 +219,6 @@ pip install -r requirements.txt
 
 Create a `.env` file in the project root:
 
-```env
-# MongoDB Atlas
-MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/?appName=<appName>
-DB_NAME=rag_chatbot
-
-# Qdrant Cloud
-QDRANT_URL=https://<your-cluster-id>.<region>.aws.cloud.qdrant.io
-QDRANT_API_KEY=<your-qdrant-api-key>
-
-# Google Gemini
-GEMINI_API_KEY=<your-gemini-api-key>
-```
-
 #### Create the Qdrant collection
 
 Before ingesting documents, create the collection in Qdrant. Run this once:
