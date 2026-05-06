@@ -334,17 +334,3 @@ Make sure the frontend API calls point to `http://localhost:5000`. Check your fr
 - **Qdrant DNS/connectivity** — Qdrant storage and retrieval are currently bypassed (`qdrant_store.py` stubs) due to an intermittent DNS resolution issue with the cloud endpoint. The Qdrant connection *was* established successfully in earlier sessions. To re-enable, uncomment the actual implementation blocks in `qdrant_store.py` once the DNS issue is resolved. The rest of the pipeline (MongoDB, Gemini, embeddings) is fully functional.
 
 ---
-
-## 🔒 Security Notes
-
-- **Never commit your `.env` file.** Add it to `.gitignore`:
-  ```
-  .env
-  ```
-- Rotate your Gemini API key, Qdrant API key, and MongoDB credentials if they were ever exposed in a public repository.
-
----
-
-## 📄 License
-
-MIT License — feel free to use and modify.
