@@ -1,0 +1,45 @@
+*{
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;   /* removes outer page scroll */
+}
+
+:root{
+  --background-color: #fefefe;
+  --foreground-color: #20b0af;
+  --primary-text-color: #1e1e1e;
+  --secondary-text-color: #fefefe;
+  --input-bg: #fefefe;
+  --input-fg: rgb(148, 148, 148);
+  --toggle-bg: #f0eb90;
+  --toggle-fg: #ffd000;
+  --uploadBtn-bg: #fefefe;
+  /* --uploadBtn-icon: rgb(113, 113, 113); */
+  --uploadBtn-icon: #757cff;
+  --user-chatbox: #548b8c;
+  --bot-chatbox: #f1f1f1;
+  --bot-chattext: #1e1e1e;
+}
+
+[data-theme="dark"]{
+  --background-color: #1e1e1e;
+  --foreground-color: #20b0af;
+  --primary-text-color: #fefefe;
+  --secondary-text-color: #fefefe;
+  --input-bg: rgb(47, 46, 46);
+  --input-fg: rgb(149, 149, 149);
+  --toggle-bg: #0e7373;
+  --toggle-fg: #42b2b2;
+  --uploadBtn-bg: rgb(47, 46, 46);
+  --uploadBtn-icon: #fefefe;
+  --user-chatbox: #548b8c;
+  --bot-chatbox: #2a2a2a;
+  --bot-chattext: #ffffff;
+}
