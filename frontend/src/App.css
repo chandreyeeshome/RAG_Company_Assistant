@@ -142,7 +142,7 @@
 
 .footer {
   position: relative;
-  bottom: 0;
+  margin-top: auto;
   width: 100%;
   height: 40px;
   text-align: center;
@@ -157,7 +157,7 @@
 .docs-container {
   width: 100%;
   max-width: 1400px;
-  padding: 10px 20px 20px 10px;
+  padding: 10px 20px 60px 10px;
 }
 
 .docs-heading {
@@ -233,7 +233,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 380px;
+  max-height: 60vh;
   overflow-y: auto;
   padding-right: 6px;
 }
