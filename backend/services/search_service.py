@@ -1,5 +1,5 @@
 from vector.qdrant_store import search_chunks
-from ai.models import embd_model, llm
+from ai.models import embed, llm
 from db.mongo import chat_sessions_collection
 import json
 
@@ -81,7 +81,7 @@ def ask_question(question, session_id=None):
 
         previous_context = "\n".join(history)
 
-    query_vector = embd_model.encode(question)
+    query_vector = embed(question)[0]
 
     hits = search_chunks(query_vector, top_k=3)
 

@@ -1,10 +1,12 @@
 from vector.qdrant_db import client
 from qdrant_client.models import Distance, VectorParams
 
+client.delete_collection("rag_docs")
+
 client.create_collection(
     collection_name="rag_docs",
     vectors_config=VectorParams(
-        size=384,
+        size=768,
         distance=Distance.COSINE
     )
 )

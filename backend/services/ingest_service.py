@@ -1,6 +1,6 @@
 from db.mongo import documents_collection
 from utils.chunking import chunk_text
-from ai.models import embd_model
+from ai.models import embed
 from vector.qdrant_store import add_chunks
 
 def ingest_content(title, content, category):
@@ -19,7 +19,7 @@ def ingest_content(title, content, category):
         title_prefix = title
     )
 
-    embedding = embd_model.encode(chunks)
+    embedding = embed(chunks)
 
     total = add_chunks(
         chunks = chunks,
