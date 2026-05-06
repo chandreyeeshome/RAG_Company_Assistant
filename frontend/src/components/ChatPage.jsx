@@ -7,7 +7,7 @@ const ChatPage = () => {
     const { messages, setMessages } = useContext(AppContext);
     const [input, setInput] = useState("");
 
-    const BASE_URL = "http://127.0.0.1:5000";
+    const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
     const [sessionId] = useState(() => {
         let storedSession = localStorage.getItem("session_id");
