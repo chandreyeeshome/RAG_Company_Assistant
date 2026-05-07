@@ -8,14 +8,16 @@
   align-items: stretch;
   justify-content: flex-start;
   padding-top: 100px;
+  overflow-y: hidden;
 }
 
 .pageContainer {
   width: 100%;
   display: flex;
   justify-content: center;
-  padding: 0 40px;
+  padding: 0 40px 80px 40px;  
   box-sizing: border-box;
+  overflow-y: auto;        
 }
 
 
@@ -141,10 +143,10 @@
 
 
 .footer {
-  position: relative;
-  margin-top: auto;
+  position: fixed;
+  bottom: 0;
   width: 100%;
-  height: 40px;
+  min-height: 40px;
   text-align: center;
   font-size: 15px;
   padding: 12px;
@@ -157,22 +159,27 @@
 .docs-container {
   width: 100%;
   max-width: 1400px;
-  padding: 10px 20px 60px 10px;
+  height: calc(100vh - 140px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px 20px 20px 10px;
+  box-sizing: border-box;
 }
 
 .docs-heading {
   margin: 0 0 18px 0;
   color: var(--primary-text-color);
+  flex-shrink: 0;
 }
-
 
 .doc-form {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
 }
-
 
 .doc-form-row {
   display: flex;
@@ -200,7 +207,7 @@
 }
 
 .doc-form button {
-  padding: 10px;
+  padding: 10px 24px;
   border-radius: 8px;
   background-color: var(--foreground-color);
   color: var(--secondary-text-color);
@@ -208,46 +215,44 @@
   cursor: pointer;
   font-weight: 600;
   align-self: flex-start;
-  padding: 10px 24px;
 }
 
-
 .docs-list-section {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  overflow: hidden;
 }
 
 .docs-list-heading {
-  margin: 0;
+  margin: 0 0 12px 0;
   font-size: 16px;
   font-weight: 600;
   color: var(--primary-text-color);
   opacity: 0.75;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+  flex-shrink: 0;
 }
 
-
 .docs-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: none;
-  overflow-y: visible;
-  padding-right: 6px;
-  padding-bottom: 80px;
 }
 
 .docs-list::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 .docs-list::-webkit-scrollbar-thumb {
   background: var(--foreground-color);
-  border-radius: 4px;
+  border-radius: 6px;
 }
-
 
 .doc-card {
   border: 1px solid var(--foreground-color);
@@ -259,6 +264,7 @@
   gap: 6px;
   width: 100%;
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .doc-card-header {

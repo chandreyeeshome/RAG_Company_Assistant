@@ -21,7 +21,8 @@ def embed(texts):
         texts = [texts]
     
     result = llm.models.embed_content(
-        model="models/text-embedding-004",
+        model="gemini-embedding-001",
         contents=texts
     )
+
     return [e.values for e in result.embeddings]
