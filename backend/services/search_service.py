@@ -64,7 +64,28 @@ def generate_answer(question, contexts):
     6. If question is unclear:
     Ask for clarification.
 
-    7. If no relevant answer exists in the context:
+    7. If the question is a follow-up scenario based on previous context:
+    Apply the policy logically.
+
+    Examples:
+    - "I submitted after 10 days"
+    - "Can I take 5 WFH days?"
+    - "So can I take 22 leaves?"
+
+    Do NOT repeat policy blindly.
+    Explain result clearly based on policy.
+
+    8. If exact result is not explicitly stated in context:
+    Use careful wording such as:
+    - may not be allowed
+    - may require approval
+    - depends on manager/HR approval
+
+    9. Keep answers concise, clear, professional, and natural.
+
+    10. Never invent policy details not present in context.
+
+    11. If no relevant answer exists in the context:
     Return:
 
     {{
@@ -72,9 +93,7 @@ def generate_answer(question, contexts):
         "answer": "I could not find relevant information in the provided documents or conversation history."
     }}
 
-    8. Keep answers concise, clear, and professional.
-
-    9. Return ONLY valid JSON.
+    12. Return ONLY valid JSON.
     Do NOT return markdown.
     Do NOT use ```json blocks.
     Do NOT add explanation outside JSON.
