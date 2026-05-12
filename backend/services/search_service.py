@@ -125,6 +125,51 @@ def generate_answer(question, contexts):
             "answer": "Error understanding model response."
         } 
 
+
+
+def select_sources(question, filtered_hits):
+    q = question.lower()
+
+    memory_words = [
+        "earlier", "previous", "summary",
+        "summarize", "what did i ask",
+        "history", "before"
+    ]
+
+    # Conversation history
+    for word in memory_words:
+        if word in q:
+            return ["Conversation History"]
+    
+    # NO relevant data stored, i.e., NO matches
+    if not filtered_hits:
+        return []
+
+    # Single match
+    if len(filtered_hits) == 1:
+        return [filtered_hits[0].payload["title"]]
+
+    # Regular case, multiple matches
+    top_score = filtered_hits[0].score
+
+    final_sources = []
+
+    for hit in filtered_hits:
+        title = hit.payload["title"]
+        
+        if hit.score >= top_score - 0.03:
+            if title not in final_sources:  # there can be multiple chunks from single document, source will be single
+                final_sources.append(title)
+     
+    # Fallback, atleast show the top scored source, in case of unusual scoring
+    if not final_sources:
+        final_sources.append(filtered_hits[0].payload["title"])
+
+    return final_sources
+
+
+
+
 def ask_question(question, session_id=None):
 
     previous_context = ""
@@ -172,13 +217,11 @@ def ask_question(question, session_id=None):
         }
 
     contexts = []
-    sources = []
 
     for hit in filtered_hits:
         payload = hit.payload
 
         contexts.append(payload["text"])
-        sources.append(payload["title"])
     
     full_context = previous_context + "\n\n" + "\n".join(contexts)
     
@@ -189,9 +232,9 @@ def ask_question(question, session_id=None):
             "answer": answer["answer"],
             "sources": []
         }
-    unique_sources = list(dict.fromkeys(sources))
+    final_unique_sources = select_sources(question, filtered_hits)
 
     return{
         "answer": answer["answer"],
-        "sources": unique_sources
+        "sources": final_unique_sources
     }
