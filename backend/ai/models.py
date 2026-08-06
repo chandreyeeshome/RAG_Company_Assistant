@@ -16,6 +16,11 @@ else:
 
 llm = genai.Client(api_key=api_key)
 
+# print("Available models:\n")
+
+# for model in llm.models.list():
+#     print(model.name)
+
 def embed(texts):
     if isinstance(texts, str):
         texts = [texts]

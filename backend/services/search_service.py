@@ -193,10 +193,13 @@ def generate_answer(question, contexts):
 
     try:
         response = llm.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-flash-latest",
             contents=prompt
         )
-    except Exception:
+    # except Exception:
+
+    except Exception as e:
+        print("Gemini Error:", e)
         return {
             "found": False,
             "answer": "The AI service is temporarily unavailable. Please try again in a few moments.",
