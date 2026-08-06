@@ -137,32 +137,32 @@ def generate_answer(question, contexts):
     If answer found:
 
     Document answer
-    {
+    {{
         "found": true,
         "answer": "...",
         "source": "document"
-    }
+    }}
 
     Conversation history answer
-    {
+    {{
         "found": true,
         "answer": "...",
         "source": "conversation"
-    }
+    }}
 
     Greeting / casual conversation
-    {
+    {{
         "found": true,
         "answer": "Hello! How can I help you today?",
         "source": "none"
-    }
+    }}
 
     Not found
-    {
+    {{
         "found": false,
         "answer": "I could not find relevant information in the provided documents.",
         "source": "none"
-    }
+    }}
 
     Every successful response MUST include a "source" field.
 
@@ -199,7 +199,8 @@ def generate_answer(question, contexts):
     except Exception:
         return {
             "found": False,
-            "answer": "The AI service is temporarily unavailable. Please try again in a few moments."
+            "answer": "The AI service is temporarily unavailable. Please try again in a few moments.",
+            "source": "none"
         }
 
     raw_text = response.text.strip()
@@ -211,7 +212,8 @@ def generate_answer(question, contexts):
     except:
         return {
             "found": False,
-            "answer": "Error understanding model response."
+            "answer": "Error understanding model response.",
+            "source": "none"
         } 
 
 
