@@ -145,10 +145,16 @@ def generate_answer(question, contexts):
     {question}
     """
 
-    response = llm.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
-    )
+    try:
+        response = llm.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+    except Exception:
+        return {
+            "found": False,
+            "answer": "The AI service is temporarily unavailable. Please try again in a few moments."
+        }
 
     raw_text = response.text.strip()
     raw_text = raw_text.replace("```json", "").replace("```", "").strip()
