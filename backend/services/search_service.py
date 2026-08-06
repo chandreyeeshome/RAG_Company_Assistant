@@ -53,7 +53,16 @@ def generate_answer(question, contexts):
     RULES
     --------------------------------------------------
 
-    1. If user greets you, greet politely in the same language.
+    1. If the user greets you, greet politely in the same language.
+
+    Greetings, introductions, thanks, casual conversation and small talk
+    are NOT based on COMPANY DOCUMENT INFORMATION.
+
+    Respond naturally.
+
+    For these responses, set:
+
+    "source": "none"
 
     2. If the user asks about earlier chat, previous messages, or memory:
     Use CONVERSATION HISTORY first.
@@ -67,11 +76,21 @@ def generate_answer(question, contexts):
     Even if company documents have changed or been deleted,
     conversation-history questions should reflect the historical conversation.
 
+    For answers based on previous chat messages,
+    set:
+
+    "source": "conversation"
+    
     3. If the user asks factual company questions:
 
     Use COMPANY DOCUMENT INFORMATION as the source of truth.
 
     Do NOT answer factual company questions using CONVERSATION HISTORY alone, even if previous conversations mention those policies.
+    
+    For answers based on COMPANY DOCUMENT INFORMATION,
+    set:
+
+    "source": "document"
     
     4. If both are useful:
     Use both naturally.
@@ -103,13 +122,8 @@ def generate_answer(question, contexts):
 
     10. Never invent policy details not present in context.
 
-    11. If no relevant answer exists in the context:
-    Return:
-
-    {{
-        "found": false,
-        "answer": "I could not find relevant information in the provided documents."
-    }}
+    11. If no relevant answer exists in the provided context,
+    return a "not found" response following the RESPONSE FORMAT below.
 
     12. Return ONLY valid JSON.
     Do NOT return markdown.
@@ -122,17 +136,49 @@ def generate_answer(question, contexts):
 
     If answer found:
 
-    {{
+    Document answer
+    {
         "found": true,
-        "answer": "your answer"
-    }}
+        "answer": "...",
+        "source": "document"
+    }
 
-    If not found:
+    Conversation history answer
+    {
+        "found": true,
+        "answer": "...",
+        "source": "conversation"
+    }
 
-    {{
+    Greeting / casual conversation
+    {
+        "found": true,
+        "answer": "Hello! How can I help you today?",
+        "source": "none"
+    }
+
+    Not found
+    {
         "found": false,
-        "answer": "I could not find relevant information in the provided documents or conversation history."
-    }}
+        "answer": "I could not find relevant information in the provided documents.",
+        "source": "none"
+    }
+
+    Every successful response MUST include a "source" field.
+
+    Possible values for "source":
+
+    - "document"
+    Answer is based on COMPANY DOCUMENT INFORMATION.
+
+    - "conversation"
+    Answer is based on CONVERSATION HISTORY.
+
+    - "none"
+    Greeting, thanks, introductions, casual conversation,
+    or responses that are not based on company documents or
+    conversation history.
+
 
     --------------------------------------------------
     CONTEXT
@@ -170,19 +216,7 @@ def generate_answer(question, contexts):
 
 
 
-def select_sources(question, filtered_hits):
-    q = question.lower()
-
-    memory_words = [
-        "earlier", "previous", "summary",
-        "summarize", "what did i ask",
-        "history", "before"
-    ]
-
-    # Conversation history
-    for word in memory_words:
-        if word in q:
-            return ["Conversation History"]
+def select_sources(filtered_hits):
     
     # NO relevant data stored, i.e., NO matches
     if not filtered_hits:
@@ -284,9 +318,18 @@ def ask_question(question, session_id=None):
             "sources": []
         }
 
-    final_unique_sources = select_sources(question, filtered_hits)
+    source_type = answer.get("source", "none")
+
+    if source_type == "document":
+        sources = select_sources(filtered_hits)
+
+    elif source_type == "conversation":
+        sources = ["Conversation History"]
+
+    else:
+        sources = []
 
     return {
         "answer": answer["answer"],
-        "sources": final_unique_sources
+        "sources": sources
     }
