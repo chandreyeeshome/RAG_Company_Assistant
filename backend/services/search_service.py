@@ -58,6 +58,15 @@ def generate_answer(question, contexts):
     2. If the user asks about earlier chat, previous messages, or memory:
     Use CONVERSATION HISTORY first.
 
+    When answering questions about previous conversations,
+    repeat or summarize what was actually said in the conversation.
+
+    Do NOT modify, correct, or replace previous answers based on the
+    current COMPANY DOCUMENT INFORMATION.
+
+    Even if company documents have changed or been deleted,
+    conversation-history questions should reflect the historical conversation.
+
     3. If the user asks factual company questions:
 
     Use COMPANY DOCUMENT INFORMATION as the source of truth.
