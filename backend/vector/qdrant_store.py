@@ -70,3 +70,12 @@ def delete_document_chunks(mongo_id):
     )
 
     return True
+
+def clear_collection():
+
+    client.delete(
+        collection_name=COLLECTION_NAME,
+        points_selector=Filter()
+    )
+
+    return True

@@ -1,48 +1,55 @@
 from db.mongo import documents_collection
-from utils.chunking import chunk_text
-from ai.models import embed
-from vector.qdrant_store import add_chunks
+from services.vector_service import build_vectors
 
 def ingest_content(title, content, category):
 
-    existing_document = documents_collection.find_one({
-        "title": title
-    })
+    mongo_id = None
 
-    if existing_document:
+    try:
+
+        existing_document = documents_collection.find_one({
+            "title": title
+        })
+
+        if existing_document:
+            return {
+                "success": False,
+                "error_code": "DUPLICATE_DOCUMENT",
+                "message": "Document with the same title already exists."
+            }
+
+        mongo_result = documents_collection.insert_one({
+            "title": title,
+            "content": content,
+            "category": category
+        })
+
+        mongo_id = mongo_result.inserted_id
+
+    
+        result = build_vectors(
+            mongo_id=mongo_id,
+            title=title,
+            content=content,
+            category=category
+        )
+
         return {
-            "success": False,
-            "message": "Document with the same title already exists."
+            "success": True,
+            "mongo_id": str(mongo_id),
+            "chunks_created": result["chunks_created"],
+            "vectors_inserted": result["vectors_inserted"]
         }
+    
+    except Exception as e:
 
-    mongo_result = documents_collection.insert_one({
-        "title": title,
-        "content": content,
-        "category": category
-    })
+        if mongo_id is not None:
+            documents_collection.delete_one({
+                "_id" : mongo_id
+            })
 
-    mongo_id = mongo_result.inserted_id
-
-    chunks = chunk_text(
-        text = content,
-        target_words = 220,
-        overlap_words = 40,
-        title_prefix = title
-    )
-
-    embeddings = embed(chunks)
-
-    total = add_chunks(
-        chunks = chunks,
-        embeddings = embeddings,
-        mongo_id = mongo_id,
-        title = title,
-        category = category
-    )
-
-    return{
-        "success": True,
-        "mongo_id": str(mongo_id),
-        "chunks_created": len(chunks),
-        "vectors_inserted": total
-    }
+        return{
+            "success" : False,
+            "message" : "Document ingestion failed",
+            "error" : str(e)
+        }

@@ -1,10 +1,15 @@
 from flask import Flask, request, jsonify
 from db.mongo import documents_collection, chat_sessions_collection
-from vector.qdrant_store import delete_document_chunks
+from vector.qdrant_store import (
+    delete_document_chunks,
+    clear_collection
+)
 from bson import ObjectId
 from services.ingest_service import ingest_content
 from services.search_service import ask_question
+from services.vector_service import build_vectors
 from flask_cors import CORS 
+import os
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -31,9 +36,15 @@ def ingest():
     result = ingest_content(title, content, category)
 
     if not result["success"]:
+        if result.get("error_code") == "DUPLICATE_DOCUMENT":
+            return jsonify({
+                "message": result["message"]
+            }), 409
+
         return jsonify({
-            "message": result["message"]
-        }), 409
+            "message": result["message"],
+            "error": result.get("error", "")
+        }), 500
 
     return jsonify({
         "message": "Ingestion successful.",
@@ -60,14 +71,59 @@ def get_documents():
 
 @app.route("/documents/<doc_id>", methods=["DELETE"])
 def delete_document(doc_id):
-    documents_collection.delete_one({
-        "_id": ObjectId(doc_id)
-    })
 
-    delete_document_chunks(doc_id)
-    return jsonify({
-        "message": "Document deleted successfully."
-    })
+    try:
+        object_id = ObjectId(doc_id)
+
+    except Exception as e:
+        return jsonify({
+            "message": "Invalid document id.",
+            "error": str(e)
+        }), 400
+
+    try:
+
+        result = documents_collection.delete_one({
+            "_id": object_id
+        })
+
+        if result.deleted_count == 0:
+            return jsonify({
+                "message": "Document not found in MongoDB."
+            }), 404
+
+    except Exception as e:
+
+        return jsonify({
+            "message": "Failed to delete document from MongoDB.",
+            "error": str(e)
+        }), 500
+
+    try:
+
+        delete_document_chunks(doc_id)
+
+        return jsonify({
+            "message": "Document deleted successfully."
+    }), 200
+
+    except Exception:
+
+        #Retry once in case of a temporary Qdrant/network failure.
+        try:
+
+            delete_document_chunks(doc_id)
+
+            return jsonify({
+                "message": "Document deleted successfully."
+            }), 200
+
+        except Exception as e:
+
+            return jsonify({
+                "message": "Document deleted from MongoDB, but failed to delete vectors from Qdrant.",
+                "error": str(e)
+            }), 500
 
 
 
@@ -132,6 +188,57 @@ def delete_chat(session_id):
     return jsonify({
         "message": "Chat session deleted"
     })
+
+
+# Rebuilds the Qdrant vector index from MongoDB documents.
+# Used when the free Qdrant cluster is recreated or reset.
+@app.route("/admin/rebuild-index", methods=["POST"])
+def rebuild_index():
+
+    admin_secret = request.headers.get("x-admin-secret")
+
+    if admin_secret != os.getenv("ADMIN_SECRET"):
+        return jsonify({
+            "message": "Unauthorized"
+        }), 401
+
+    try:
+
+        clear_collection()
+
+        documents = documents_collection.find()
+
+        documents_processed = 0
+        chunks_created = 0
+        vectors_inserted = 0
+
+        for document in documents:
+
+            result = build_vectors(
+                mongo_id=document["_id"],
+                title=document["title"],
+                content=document["content"],
+                category=document["category"]
+            )
+
+            documents_processed += 1
+            chunks_created += result["chunks_created"]
+            vectors_inserted += result["vectors_inserted"]
+
+        return jsonify({
+            "message": "Vector index rebuilt successfully.",
+            "documents_processed": documents_processed,
+            "chunks_created": chunks_created,
+            "vectors_inserted": vectors_inserted
+        }), 200
+
+    except Exception as e:
+
+        return jsonify({
+            "message": "Failed to rebuild vector index.",
+            "error": str(e)
+        }), 500
+
 
 
 if __name__ == "__main__":

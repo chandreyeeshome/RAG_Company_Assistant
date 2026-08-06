@@ -3,3 +3,11 @@ venv/
 __pycache__/
 *.pyc
 node_modules/
+
+hs_err_pid11708.log
+hs_err_pid25172.log
+hs_err_pid25900.log
+hs_err_pid3428.log
+replay_pid11708.log
+replay_pid25172.log
+replay_pid3428.log
