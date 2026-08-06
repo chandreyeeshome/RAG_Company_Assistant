@@ -30,10 +30,15 @@ def ingest():
     
     result = ingest_content(title, content, category)
 
+    if not result["success"]:
+        return jsonify({
+            "message": result["message"]
+        }), 409
+
     return jsonify({
         "message": "Ingestion successful.",
         "data": result
-    })
+    }), 201
 
 @app.route("/documents", methods=["GET"])
 def get_documents():
