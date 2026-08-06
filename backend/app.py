@@ -10,6 +10,9 @@ from services.search_service import ask_question
 from services.vector_service import build_vectors
 from flask_cors import CORS 
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)

@@ -19,7 +19,10 @@ def generate_answer(question, contexts):
     --------------------------------------------------
     Previous chat messages between the user and assistant.
 
-    Use this when the user asks things like:
+    Use this when the user asks about:
+    - previous conversations
+    - earlier messages
+    - summaries
     - what did I ask earlier?
     - what did you say before?
     - repeat the last answer
@@ -28,6 +31,9 @@ def generate_answer(question, contexts):
     - follow-up questions using words like:
     it, that, earlier, previous, above
 
+    Do NOT use conversation history as evidence for factual company policies if the information is absent from COMPANY DOCUMENT INFORMATION.
+    
+    
     --------------------------------------------------
     2. COMPANY DOCUMENT INFORMATION
     --------------------------------------------------
@@ -52,9 +58,12 @@ def generate_answer(question, contexts):
     2. If the user asks about earlier chat, previous messages, or memory:
     Use CONVERSATION HISTORY first.
 
-    3. If the user asks policy/company questions:
-    Use COMPANY DOCUMENT INFORMATION first.
+    3. If the user asks factual company questions:
 
+    Use COMPANY DOCUMENT INFORMATION as the source of truth.
+
+    Do NOT answer factual company questions using CONVERSATION HISTORY alone, even if previous conversations mention those policies.
+    
     4. If both are useful:
     Use both naturally.
 
@@ -90,7 +99,7 @@ def generate_answer(question, contexts):
 
     {{
         "found": false,
-        "answer": "I could not find relevant information in the provided documents or conversation history."
+        "answer": "I could not find relevant information in the provided documents."
     }}
 
     12. Return ONLY valid JSON.
@@ -235,25 +244,34 @@ def ask_question(question, session_id=None):
             "sources": []
         }
 
-    contexts = []
+    document_context = []
 
     for hit in filtered_hits:
-        payload = hit.payload
 
-        contexts.append(payload["text"])
-    
-    full_context = previous_context + "\n\n" + "\n".join(contexts)
-    
-    answer = generate_answer(question, [full_context])
+        document_context.append(hit.payload["text"])
+
+    context_text = f"""
+    CONVERSATION HISTORY
+    --------------------
+    {previous_context}
+
+    COMPANY DOCUMENT INFORMATION
+    ----------------------------
+    {"\n\n".join(document_context)}
+    """
+
+    answer = generate_answer(question, [context_text])
 
     if answer["found"] == False:
-        return{
+
+        return {
             "answer": answer["answer"],
             "sources": []
         }
+
     final_unique_sources = select_sources(question, filtered_hits)
 
-    return{
+    return {
         "answer": answer["answer"],
         "sources": final_unique_sources
     }
