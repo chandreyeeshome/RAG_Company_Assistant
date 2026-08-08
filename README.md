@@ -347,5 +347,4 @@ Set `VITE_API_URL` in a `frontend/.env` file if your backend isn't running at `h
 
 ## Site Link
 
-You can check the RAG Company Assistant here: 
-[rag-company-assistant.vercel.app](https://rag-company-assistant.vercel.app)
+You can check the RAG Company Assistant [here](https://rag-company-assistant.vercel.app).
