@@ -7,7 +7,7 @@ A full-stack **Retrieval-Augmented Generation (RAG)** chatbot that lets you inge
 
 ## 🎥 Website Walkthrough
  
-Check out the [demo video](https://www.loom.com/share/65868e2f77124efba7e999d20f3f0290) — best watched at **1.5x speed**.
+Check out the [demo video](https://www.loom.com/share/65868e2f77124efba7e999d20f3f0290) - best watched at **1.5x speed**.
 
 ---
 
@@ -24,13 +24,13 @@ Check out the [demo video](https://www.loom.com/share/65868e2f77124efba7e999d20f
 
 ## Features
 
-- **Document Ingestion** — Add company documents with a title and category
-- **Conversational Chat** — Ask questions and get answers grounded in your documents
-- **Semantic Search** — Uses Gemini embeddings + Qdrant vector DB for relevant chunk retrieval
-- **Source Attribution** — Responses cite which documents they came from
-- **Chat History** — Persisted per-session conversation history via MongoDB
-- **Dark/Light Mode** — Theme toggle with local storage persistence
-- **Admin Index Rebuild** — Secret-protected endpoint to rebuild the Qdrant vector index from MongoDB, useful when the vector DB cluster is recreated/reset
+- **Document Ingestion** - Add company documents with a title and category
+- **Conversational Chat** - Ask questions and get answers grounded in your documents
+- **Semantic Search** - Uses Gemini embeddings + Qdrant vector DB for relevant chunk retrieval
+- **Source Attribution** - Responses cite which documents they came from
+- **Chat History** - Persisted per-session conversation history via MongoDB
+- **Dark/Light Mode** - Theme toggle with local storage persistence
+- **Admin Index Rebuild** - Secret-protected endpoint to rebuild the Qdrant vector index from MongoDB, useful when the vector DB cluster is recreated/reset
 
 ---
 
@@ -88,7 +88,7 @@ Check out the [demo video](https://www.loom.com/share/65868e2f77124efba7e999d20f
                           └───────────────────────────┘
 ```
 
-### Data Flow — Ask a Question
+### Data Flow - Ask a Question
 
 ```
 User question
@@ -115,7 +115,7 @@ Save Q&A to MongoDB chat_sessions
 Return { answer, sources } to frontend
 ```
 
-### Data Flow — Ingest a Document
+### Data Flow - Ingest a Document
 
 ```
 { title, content, category }
@@ -124,14 +124,14 @@ Return { answer, sources } to frontend
 Store full document in MongoDB (documents collection)
      │
      ▼
-chunk_text() — sentence-aware sliding window
+chunk_text() - sentence-aware sliding window
   target_words=220, overlap_words=40
      │
      ▼
 Gemini embed() → embeddings (3072-dim)
      │
      ▼
-Qdrant upsert — each chunk as a PointStruct
+Qdrant upsert - each chunk as a PointStruct
   payload: { mongo_id, chunk_no, title, text, category }
 ```
 
@@ -174,7 +174,7 @@ RAG_Company_Assistant/
 │           ├── DocumentsPage.jsx
 │           └── ThemeToggle.jsx
 │
-└── .env                          # (not committed — see below)
+└── .env                          # (not committed)
 ```
 
 ---
@@ -244,7 +244,7 @@ ADMIN_SECRET=your_admin_secret_for_rebuild_endpoint
 
 #### Qdrant collection
 
-You don't need to create the collection manually — `backend/vector/qdrant_db.py` auto-creates the `rag_docs` collection (3072-dim, COSINE distance) on first run if it doesn't already exist, along with a `mongo_id` payload index.
+You don't need to create the collection manually - `backend/vector/qdrant_db.py` auto-creates the `rag_docs` collection (3072-dim, COSINE distance) on first run if it doesn't already exist, along with a `mongo_id` payload index.
 
 #### Run the Flask backend
 
@@ -317,23 +317,23 @@ Set `VITE_API_URL` in a `frontend/.env` file if your backend isn't running at `h
 
 - **Sliding window chunking** with sentence boundary awareness ensures context isn't split mid-thought. Chunks of ~220 words with 40-word overlap balance retrieval precision and context richness.
 - **Score threshold (0.50)** on Qdrant results filters out low-confidence matches, preventing hallucination from loosely related chunks.
-- **Session-aware context** — the last 3 conversation turns are always pulled from MongoDB and prepended to the retrieval prompt; the LLM (not a similarity score) decides whether a question is actually about prior conversation, current documents, or both.
-- **Single-chunk handling** — documents under 80 words are stored as one chunk, avoiding meaningless fragmentation.
-- **Gemini returns structured JSON** — the prompt enforces `{ found: bool, answer: str, source: "document" | "conversation" | "none" }` output, making parsing deterministic and letting the backend decide what sources to display.
-- **Admin rebuild endpoint** — since free-tier Qdrant clusters can be reset/recreated, `/admin/rebuild-index` re-embeds every MongoDB document into a fresh Qdrant collection without needing to re-ingest from scratch.
+- **Session-aware context** - the last 3 conversation turns are always pulled from MongoDB and prepended to the retrieval prompt; the LLM (not a similarity score) decides whether a question is actually about prior conversation, current documents, or both.
+- **Single-chunk handling** - documents under 80 words are stored as one chunk, avoiding meaningless fragmentation.
+- **Gemini returns structured JSON** - the prompt enforces `{ found: bool, answer: str, source: "document" | "conversation" | "none" }` output, making parsing deterministic and letting the backend decide what sources to display.
+- **Admin rebuild endpoint** - since free-tier Qdrant clusters can be reset/recreated by the admin, `/admin/rebuild-index` re-embeds every MongoDB document into a fresh Qdrant collection without needing to re-ingest from scratch.
 
 ---
 
 ## 🔭 Scope of Improvements
 
-- **Better UI/UX** — current interface is functional but minimal; polish spacing, empty states, and responsiveness for smaller screens.
-- **Status/loading messages** — no visible feedback while a document is being ingested or a question is being answered (e.g. "Embedding document...", "Searching knowledge base...").
-- **File-based ingestion** — currently only raw pasted text is supported; add `.pdf`, `.docx`, and `.txt` upload support instead of requiring manual copy-paste.
-- **Chat memory window** — only the last 3 conversation turns are fetched for context; this lookback window could be increased (or made configurable) for longer, more coherent multi-turn conversations.
-- **Streaming answers** — the frontend currently fakes a typewriter effect after the full answer arrives; true token-level streaming from the backend would feel more responsive.
-- **Document editing** — no way to update an existing document's content/category without deleting and re-ingesting it.
-- **Authentication** — there's currently no user-level auth; anyone with the URL can ingest, delete, or query documents. The `/admin/rebuild-index` route is the only protected endpoint.
-- **Pagination** — `/documents` and `/chat-history` return everything at once; pagination would help as data grows.
+- **Better UI/UX** - current interface is functional but minimal; polish spacing, empty states, and responsiveness for smaller screens.
+- **Status/loading messages** - no visible feedback while a document is being ingested or a question is being answered (e.g. "Embedding document...", "Searching knowledge base...").
+- **File-based ingestion** - currently only raw pasted text is supported; add `.pdf`, `.docx`, and `.txt` upload support instead of requiring manual copy-paste.
+- **Chat memory window** - only the last 3 conversation turns are fetched for context; this lookback window could be increased (or made configurable) for longer, more coherent multi-turn conversations.
+- **Streaming answers** - the frontend currently fakes a typewriter effect after the full answer arrives; true token-level streaming from the backend would feel more responsive.
+- **Document editing** - no way to update an existing document's content/category without deleting and re-ingesting it.
+- **Authentication** - there's currently no user-level auth; anyone with the URL can ingest, delete, or query documents. The `/admin/rebuild-index` route is the only protected endpoint.
+- **Pagination** - `/documents` and `/chat-history` return everything at once; pagination would help as data grows.
 
 ---
 
