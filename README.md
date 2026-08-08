@@ -40,15 +40,15 @@ Check out the [demo video](https://www.loom.com/share/65868e2f77124efba7e999d20f
 ┌─────────────────────────────────────────────────────────────────┐
 │                        React Frontend                           │
 │   ChatPage  ──────────────────────────────  DocumentsPage       │
-│   (Ask questions, view history)            (Ingest, delete)     │
+│   (Ask questions)                          (Ingest, delete)     │
 └────────────────────────┬────────────────────────────────────────┘
                          │  HTTP (REST API)
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Flask Backend (backend/app.py)              │
+│                      Flask Backend (backend/app.py)             │
 │                                                                 │
 │   POST /ask                  →   search_service.ask_question()  │
-│   POST /documents            →   ingest_service.ingest_content() │
+│   POST /documents            →   ingest_service.ingest_content()│
 │   GET  /documents            →   MongoDB fetch                  │
 │   DELETE /documents/:id      →   MongoDB + Qdrant delete        │
 │   GET  /chat-history/:id     →   MongoDB fetch                  │
@@ -58,10 +58,10 @@ Check out the [demo video](https://www.loom.com/share/65868e2f77124efba7e999d20f
          │                           │
          ▼                           ▼
 ┌─────────────────┐       ┌──────────────────────────────────────┐
-│    MongoDB       │       │           Ingest Pipeline            │
-│  (Atlas)         │       │                                      │
+│    MongoDB      │       │           Ingest Pipeline            │
+│    (Atlas)      │       │                                      │
 │                 │       │  chunking.py  →  Gemini Embeddings   │
-│  documents      │       │  (chunk_text)   (gemini-embedding-001)│
+│  documents      │       │  (chunk_text)  (gemini-embedding-001)│
 │  chat_sessions  │       │       │                              │
 └─────────────────┘       │       ▼                              │
                           │  qdrant_store.add_chunks()           │
@@ -69,22 +69,25 @@ Check out the [demo video](https://www.loom.com/share/65868e2f77124efba7e999d20f
                                          │
                                          ▼
                           ┌──────────────────────────┐
-                          │     Qdrant Vector DB      │
-                          │   (Cloud — AWS sa-east-1) │
-                          │   Collection: rag_docs    │
-                          │   Vector size: 3072       │
-                          └──────────────┬────────────┘
+                          │     Qdrant Vector DB     │
+                          │  (Cloud - AWS sa-east-1) │
+                          │   Collection: rag_docs   │
+                          │   Vector size: 3072      │
+                          └──────────────┬───────────┘
                                          │
                           ┌──────────────▼────────────┐
-                          │    Search Pipeline         │
+                          │      Search Pipeline      │
                           │                           │
-                          │  embed(question)            │
-                          │       ↓                   │
-                          │  qdrant_store.search_chunks│
+                          │      embed(question)      │
+                          │             ↓             │
+                          │ qdrant_store.search_chunks│
                           │  (top-k=3, score ≥ 0.50)  │
-                          │       ↓                   │
-                          │  Gemini (gemini-flash-latest)│
-                          │  → JSON { found, answer, source } │
+                          │             ↓             │
+                          │          Gemini           |
+                          |   (gemini-flash-latest)   |
+                          |             ↓             |
+                          │           JSON            |
+                          |  {found, answer, source}  │
                           └───────────────────────────┘
 ```
 
@@ -112,7 +115,7 @@ Gemini (gemini-flash-latest) → JSON { found, answer, source }
 Save Q&A to MongoDB chat_sessions
      │
      ▼
-Return { answer, sources } to frontend
+Return {answer, sources} to frontend
 ```
 
 ### Data Flow - Ingest a Document
@@ -126,13 +129,15 @@ Store full document in MongoDB (documents collection)
      ▼
 chunk_text() - sentence-aware sliding window
   target_words=220, overlap_words=40
+  (if total words ≤ single_chunk_threshold=80,
+   skip chunking → return as one single chunk)
      │
      ▼
 Gemini embed() → embeddings (3072-dim)
      │
      ▼
 Qdrant upsert - each chunk as a PointStruct
-  payload: { mongo_id, chunk_no, title, text, category }
+  payload: {mongo_id, chunk_no, title, text, category}
 ```
 
 ---
@@ -181,15 +186,15 @@ RAG_Company_Assistant/
 
 ## Tech Stack
 
-| Layer          | Technology                                        |
-| -------------- | -------------------------------------------------- |
-| Frontend       | React, CSS variables (dark/light theme)            |
-| Backend        | Python 3.11+, Flask, flask-cors                    |
+| Layer          | Technology                                           |
+| -------------- | ---------------------------------------------------- |
+| Frontend       | React, CSS variables (dark/light theme)              |
+| Backend        | Python 3.11+, Flask, flask-cors                      |
 | LLM            | Google Gemini `gemini-flash-latest` (`google-genai`) |
-| Embeddings     | Google Gemini `gemini-embedding-001` (3072-dim)    |
-| Vector DB      | Qdrant Cloud (AWS sa-east-1)                       |
-| Document DB    | MongoDB Atlas                                      |
-| Env management | `python-dotenv`                                    |
+| Embeddings     | Google Gemini `gemini-embedding-001` (3072-dim)      |
+| Vector DB      | Qdrant Cloud (AWS sa-east-1)                         |
+| Document DB    | MongoDB Atlas                                        |
+| Env management | `python-dotenv`                                      |
 
 ---
 
@@ -220,8 +225,11 @@ cd RAG_Company_Assistant
 cd backend
 python -m venv venv
 
-# Windows
+# Windows (Command Prompt)
 venv\Scripts\activate
+ 
+# Windows (PowerShell)
+.\venv\Scripts\Activate.ps1
 
 # macOS/Linux
 source venv/bin/activate
@@ -272,15 +280,15 @@ Set `VITE_API_URL` in a `frontend/.env` file if your backend isn't running at `h
 
 ## API Reference
 
-| Method   | Endpoint                     | Description                                   |
-| -------- | ----------------------------- | ---------------------------------------------- |
-| `GET`    | `/`                           | Health check                                   |
-| `POST`   | `/documents`                  | Ingest a new document                          |
-| `GET`    | `/documents`                  | List all documents                             |
-| `DELETE` | `/documents/<doc_id>`         | Delete document (MongoDB + Qdrant)             |
-| `POST`   | `/ask`                        | Ask a question (RAG pipeline)                  |
-| `GET`    | `/chat-history/<session_id>`  | Get chat history for a session                 |
-| `DELETE` | `/chat-history/<session_id>`  | Clear chat history for a session               |
+| Method   | Endpoint                      | Description                                                          |
+| -------- | ----------------------------- | -------------------------------------------------------------------- |
+| `GET`    | `/`                           | Health check                                                         |
+| `POST`   | `/documents`                  | Ingest a new document                                                |
+| `GET`    | `/documents`                  | List all documents                                                   |
+| `DELETE` | `/documents/<doc_id>`         | Delete document (MongoDB + Qdrant)                                   |
+| `POST`   | `/ask`                        | Ask a question (RAG pipeline)                                        |
+| `GET`    | `/chat-history/<session_id>`  | Get chat history for a session                                       |
+| `DELETE` | `/chat-history/<session_id>`  | Clear chat history for a session                                     |
 | `POST`   | `/admin/rebuild-index`        | Rebuild Qdrant index from MongoDB (requires `x-admin-secret` header) |
 
 #### POST `/documents`
@@ -315,8 +323,8 @@ Set `VITE_API_URL` in a `frontend/.env` file if your backend isn't running at `h
 
 ## 🧩 Key Design Decisions
 
-- **Sliding window chunking** with sentence boundary awareness ensures context isn't split mid-thought. Chunks of ~220 words with 40-word overlap balance retrieval precision and context richness.
-- **Score threshold (0.50)** on Qdrant results filters out low-confidence matches, preventing hallucination from loosely related chunks.
+- **Sliding window chunking** - with sentence boundary awareness ensures context isn't split mid-thought. Chunks of ~220 words with 40-word overlap balance retrieval precision and context richness.
+- **Score threshold (0.50)** - on Qdrant results filters out low-confidence matches, preventing hallucination from loosely related chunks.
 - **Session-aware context** - the last 3 conversation turns are always pulled from MongoDB and prepended to the retrieval prompt; the LLM (not a similarity score) decides whether a question is actually about prior conversation, current documents, or both.
 - **Single-chunk handling** - documents under 80 words are stored as one chunk, avoiding meaningless fragmentation.
 - **Gemini returns structured JSON** - the prompt enforces `{ found: bool, answer: str, source: "document" | "conversation" | "none" }` output, making parsing deterministic and letting the backend decide what sources to display.
