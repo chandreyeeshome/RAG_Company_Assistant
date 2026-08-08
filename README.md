@@ -1,17 +1,35 @@
+
 # Company Knowledge Assistant
 
-A full-stack **Retrieval-Augmented Generation (RAG)** chatbot that lets you ingest internal company documents and query them conversationally. Built with a React frontend, Flask backend, MongoDB for document storage, Qdrant for vector search, and Google Gemini as the LLM.
+A full-stack **Retrieval-Augmented Generation (RAG)** chatbot that lets you ingest internal company documents and query them conversationally. Built with a React frontend, Flask backend, MongoDB for document storage, Qdrant for vector search, and Google Gemini for both embeddings and answer generation.
+
+---
+
+## 🎥 [Demo Video](https://www.loom.com/share/65868e2f77124efba7e999d20f3f0290)
+
+> Watch the demo at **1.5x speed** for the best experience.
+
+---
+
+## Screenshots
+
+| Chat Page | Documents Page |
+|---|---|
+| ![Chat Page](assets/chat-page.png) | ![Documents Page](assets/documents-page.png) |
+
+> Add your two screenshots to an `assets/` folder in the repo root, named `chat-page.png` and `documents-page.png` (or update the paths above to match your filenames).
 
 ---
 
 ## Features
 
-- **Document Ingestion** — Upload company documents with a title and category
+- **Document Ingestion** — Add company documents with a title and category
 - **Conversational Chat** — Ask questions and get answers grounded in your documents
-- **Semantic Search** — Uses sentence embeddings + Qdrant vector DB for relevant chunk retrieval
+- **Semantic Search** — Uses Gemini embeddings + Qdrant vector DB for relevant chunk retrieval
 - **Source Attribution** — Responses cite which documents they came from
 - **Chat History** — Persisted per-session conversation history via MongoDB
 - **Dark/Light Mode** — Theme toggle with local storage persistence
+- **Admin Index Rebuild** — Secret-protected endpoint to rebuild the Qdrant vector index from MongoDB, useful when the vector DB cluster is recreated/reset
 
 ---
 
@@ -26,22 +44,23 @@ A full-stack **Retrieval-Augmented Generation (RAG)** chatbot that lets you inge
                          │  HTTP (REST API)
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Flask Backend (app.py)                     │
+│                      Flask Backend (backend/app.py)              │
 │                                                                 │
-│   POST /ask              →   search_service.ask_question()      │
-│   POST /documents        →   ingest_service.ingest_content()    │
-│   GET  /documents        →   MongoDB fetch                      │
-│   DELETE /documents/:id  →   MongoDB + Qdrant delete            │
-│   GET  /chat-history/:id →   MongoDB fetch                      │
-│   DELETE /chat-history/:id→  MongoDB delete                     │
+│   POST /ask                  →   search_service.ask_question()  │
+│   POST /documents            →   ingest_service.ingest_content() │
+│   GET  /documents            →   MongoDB fetch                  │
+│   DELETE /documents/:id      →   MongoDB + Qdrant delete        │
+│   GET  /chat-history/:id     →   MongoDB fetch                  │
+│   DELETE /chat-history/:id   →   MongoDB delete                 │
+│   POST /admin/rebuild-index  →   rebuild Qdrant from MongoDB    │
 └────────┬───────────────────────────┬────────────────────────────┘
          │                           │
          ▼                           ▼
 ┌─────────────────┐       ┌──────────────────────────────────────┐
 │    MongoDB       │       │           Ingest Pipeline            │
 │  (Atlas)         │       │                                      │
-│                 │       │  chunking.py  →  SentenceTransformer  │
-│  documents      │       │  (chunk_text)     (all-MiniLM-L6-v2) │
+│                 │       │  chunking.py  →  Gemini Embeddings   │
+│  documents      │       │  (chunk_text)   (gemini-embedding-001)│
 │  chat_sessions  │       │       │                              │
 └─────────────────┘       │       ▼                              │
                           │  qdrant_store.add_chunks()           │
@@ -52,18 +71,19 @@ A full-stack **Retrieval-Augmented Generation (RAG)** chatbot that lets you inge
                           │     Qdrant Vector DB      │
                           │   (Cloud — AWS sa-east-1) │
                           │   Collection: rag_docs    │
+                          │   Vector size: 3072       │
                           └──────────────┬────────────┘
                                          │
                           ┌──────────────▼────────────┐
                           │    Search Pipeline         │
                           │                           │
-                          │  encode(question)          │
+                          │  embed(question)            │
                           │       ↓                   │
-                          │  qdrant_store.search()     │
+                          │  qdrant_store.search_chunks│
                           │  (top-k=3, score ≥ 0.50)  │
                           │       ↓                   │
-                          │  Gemini 2.5 Flash (LLM)   │
-                          │  → JSON { found, answer } │
+                          │  Gemini (gemini-flash-latest)│
+                          │  → JSON { found, answer, source } │
                           └───────────────────────────┘
 ```
 
@@ -73,7 +93,7 @@ A full-stack **Retrieval-Augmented Generation (RAG)** chatbot that lets you inge
 User question
      │
      ▼
-Encode with SentenceTransformer (all-MiniLM-L6-v2)
+Embed with Gemini (gemini-embedding-001)
      │
      ▼
 Vector search in Qdrant (top_k=3, threshold=0.50)
@@ -85,7 +105,7 @@ Fetch last 3 chat turns from MongoDB (session context)
 Build prompt: [session history] + [retrieved chunks] + [question]
      │
      ▼
-Gemini 2.5 Flash → JSON response { found: bool, answer: str }
+Gemini (gemini-flash-latest) → JSON { found, answer, source }
      │
      ▼
 Save Q&A to MongoDB chat_sessions
@@ -107,7 +127,7 @@ chunk_text() — sentence-aware sliding window
   target_words=220, overlap_words=40
      │
      ▼
-SentenceTransformer.encode(chunks) → embeddings
+Gemini embed() → embeddings (3072-dim)
      │
      ▼
 Qdrant upsert — each chunk as a PointStruct
@@ -119,29 +139,33 @@ Qdrant upsert — each chunk as a PointStruct
 ## Project Structure
 
 ```
-project-root/
+RAG_Company_Assistant/
 │
-├── app.py                    # Flask entry point, all routes
+├── backend/
+│   ├── app.py                    # Flask entry point, all routes
+│   ├── config.py                 # Env var loading (Mongo URI, DB name)
+│   │
+│   ├── services/
+│   │   ├── ingest_service.py     # Document ingestion orchestration
+│   │   ├── vector_service.py     # Chunk → embed → store pipeline
+│   │   └── search_service.py     # RAG query pipeline + Gemini call
+│   │
+│   ├── ai/
+│   │   └── models.py             # Gemini client init + embed()
+│   │
+│   ├── db/
+│   │   └── mongo.py              # MongoDB client + collections
+│   │
+│   ├── vector/
+│   │   ├── qdrant_db.py          # Qdrant client + collection init
+│   │   └── qdrant_store.py       # add_chunks, search_chunks, delete, clear
+│   │
+│   ├── utils/
+│   │   └── chunking.py           # Text cleaning + sliding window chunker
+│   │
+│   └── requirements.txt
 │
-├── services/
-│   ├── ingest_service.py     # Document ingestion pipeline
-│   └── search_service.py     # RAG query pipeline + Gemini call
-│
-├── ai/
-│   └── models.py             # SentenceTransformer + Gemini client init
-│
-├── db/
-│   ├── mongo.py              # MongoDB client + collections
-│   └── config.py             # Env var loading
-│
-├── vector/
-│   ├── qdrant_db.py          # Qdrant client init
-│   └── qdrant_store.py       # add_chunks, search_chunks, delete_document_chunks
-│
-├── utils/
-│   └── chunking.py           # Text cleaning + sliding window chunker
-│
-├── frontend/                 # React app (Vite / CRA)
+├── frontend/                     # React app (Vite)
 │   └── src/
 │       ├── App.jsx
 │       └── components/
@@ -149,23 +173,22 @@ project-root/
 │           ├── DocumentsPage.jsx
 │           └── ThemeToggle.jsx
 │
-├── requirements.txt
-└── .env                      # (not committed — see below)
+└── .env                          # (not committed — see below)
 ```
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React, CSS variables (dark/light theme) |
-| Backend | Python 3.11+, Flask, flask-cors |
-| LLM | Google Gemini 2.5 Flash (`google-genai`) |
-| Embeddings | `sentence-transformers` — `all-MiniLM-L6-v2` |
-| Vector DB | Qdrant Cloud (AWS sa-east-1) |
-| Document DB | MongoDB Atlas |
-| Env management | `python-dotenv` |
+| Layer          | Technology                                        |
+| -------------- | -------------------------------------------------- |
+| Frontend       | React, CSS variables (dark/light theme)            |
+| Backend        | Python 3.11+, Flask, flask-cors                    |
+| LLM            | Google Gemini `gemini-flash-latest` (`google-genai`) |
+| Embeddings     | Google Gemini `gemini-embedding-001` (3072-dim)    |
+| Vector DB      | Qdrant Cloud (AWS sa-east-1)                       |
+| Document DB    | MongoDB Atlas                                      |
+| Env management | `python-dotenv`                                    |
 
 ---
 
@@ -183,18 +206,17 @@ project-root/
 
 ### 1. Clone the Repository
 
-```bash
-git clone https://github.com/your-username/your-repo-name.git
-cd your-repo-name
+```
+git clone https://github.com/chandreyeeshome/RAG_Company_Assistant.git
+cd RAG_Company_Assistant
 ```
 
 ---
 
 ### 2. Backend Setup
 
-#### Create and activate a virtual environment
-
-```bash
+```
+cd backend
 python -m venv venv
 
 # Windows
@@ -202,50 +224,30 @@ venv\Scripts\activate
 
 # macOS/Linux
 source venv/bin/activate
-```
 
-#### Install dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-> **Note:** `torch` is a large package. If you don't have a GPU and want a lighter install, you can install the CPU-only version of torch separately before running the above:
-> ```bash
-> pip install torch --index-url https://download.pytorch.org/whl/cpu
-> ```
-
 #### Configure environment variables
 
-Create a `.env` file in the project root:
+Create a `.env` file inside `backend/`:
 
-#### Create the Qdrant collection
-
-Before ingesting documents, create the collection in Qdrant. Run this once:
-
-```python
-from qdrant_client import QdrantClient
-from qdrant_client.models import VectorParams, Distance
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-client = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
-
-client.create_collection(
-    collection_name="rag_docs",
-    vectors_config=VectorParams(size=384, distance=Distance.COSINE)
-)
-
-print("Collection created!")
+```
+MONGO_URI=your_mongodb_atlas_uri
+DB_NAME=your_db_name
+QDRANT_URL=your_qdrant_cluster_url
+QDRANT_API_KEY=your_qdrant_api_key
+GEMINI_API_KEY=your_gemini_api_key
+ADMIN_SECRET=your_admin_secret_for_rebuild_endpoint
 ```
 
-> `all-MiniLM-L6-v2` outputs **384-dimensional** vectors.
+#### Qdrant collection
+
+You don't need to create the collection manually — `backend/vector/qdrant_db.py` auto-creates the `rag_docs` collection (3072-dim, COSINE distance) on first run if it doesn't already exist, along with a `mongo_id` payload index.
 
 #### Run the Flask backend
 
-```bash
+```
 python app.py
 ```
 
@@ -255,31 +257,33 @@ Backend runs at `http://localhost:5000`.
 
 ### 3. Frontend Setup
 
-```bash
+```
 cd frontend
 npm install
-npm start
+npm run dev
 ```
 
 Frontend runs at `http://localhost:5173`.
 
-Make sure the frontend API calls point to `http://localhost:5000`. Check your frontend's API base URL config and update if needed.
+Set `VITE_API_URL` in a `frontend/.env` file if your backend isn't running at `http://localhost:5000`.
 
 ---
 
 ## API Reference
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/` | Health check |
-| `POST` | `/documents` | Ingest a new document |
-| `GET` | `/documents` | List all documents |
-| `DELETE` | `/documents/<doc_id>` | Delete document (MongoDB + Qdrant) |
-| `POST` | `/ask` | Ask a question (RAG pipeline) |
-| `GET` | `/chat-history/<session_id>` | Get chat history for a session |
-| `DELETE` | `/chat-history/<session_id>` | Clear chat history for a session |
+| Method   | Endpoint                     | Description                                   |
+| -------- | ----------------------------- | ---------------------------------------------- |
+| `GET`    | `/`                           | Health check                                   |
+| `POST`   | `/documents`                  | Ingest a new document                          |
+| `GET`    | `/documents`                  | List all documents                             |
+| `DELETE` | `/documents/<doc_id>`         | Delete document (MongoDB + Qdrant)             |
+| `POST`   | `/ask`                        | Ask a question (RAG pipeline)                  |
+| `GET`    | `/chat-history/<session_id>`  | Get chat history for a session                 |
+| `DELETE` | `/chat-history/<session_id>`  | Clear chat history for a session               |
+| `POST`   | `/admin/rebuild-index`        | Rebuild Qdrant index from MongoDB (requires `x-admin-secret` header) |
 
 #### POST `/documents`
+
 ```json
 {
   "title": "Leave Policy 2025",
@@ -289,6 +293,7 @@ Make sure the frontend API calls point to `http://localhost:5000`. Check your fr
 ```
 
 #### POST `/ask`
+
 ```json
 {
   "question": "How many leave days do employees get?",
@@ -297,6 +302,7 @@ Make sure the frontend API calls point to `http://localhost:5000`. Check your fr
 ```
 
 #### Response
+
 ```json
 {
   "answer": "Employees are entitled to 20 days of paid leave per year.",
@@ -310,14 +316,27 @@ Make sure the frontend API calls point to `http://localhost:5000`. Check your fr
 
 - **Sliding window chunking** with sentence boundary awareness ensures context isn't split mid-thought. Chunks of ~220 words with 40-word overlap balance retrieval precision and context richness.
 - **Score threshold (0.50)** on Qdrant results filters out low-confidence matches, preventing hallucination from loosely related chunks.
-- **Session-aware context** — the last 3 conversation turns are prepended to the retrieval prompt, enabling follow-up questions.
+- **Session-aware context** — the last 3 conversation turns are always pulled from MongoDB and prepended to the retrieval prompt; the LLM (not a similarity score) decides whether a question is actually about prior conversation, current documents, or both.
 - **Single-chunk handling** — documents under 80 words are stored as one chunk, avoiding meaningless fragmentation.
-- **Gemini returns structured JSON** — the prompt enforces `{ found: bool, answer: str }` output, making parsing deterministic and preventing incomplete responses from surfacing to users.
+- **Gemini returns structured JSON** — the prompt enforces `{ found: bool, answer: str, source: "document" | "conversation" | "none" }` output, making parsing deterministic and letting the backend decide what sources to display.
+- **Admin rebuild endpoint** — since free-tier Qdrant clusters can be reset/recreated, `/admin/rebuild-index` re-embeds every MongoDB document into a fresh Qdrant collection without needing to re-ingest from scratch.
 
 ---
 
-## ⚠️ Known Issues
+## 🔭 Scope of Improvements
 
-- **Qdrant DNS/connectivity** — Qdrant storage and retrieval are currently bypassed (`qdrant_store.py` stubs) due to an intermittent DNS resolution issue with the cloud endpoint. The Qdrant connection *was* established successfully in earlier sessions. To re-enable, uncomment the actual implementation blocks in `qdrant_store.py` once the DNS issue is resolved. The rest of the pipeline (MongoDB, Gemini, embeddings) is fully functional.
+- **Better UI/UX** — current interface is functional but minimal; polish spacing, empty states, and responsiveness for smaller screens.
+- **Status/loading messages** — no visible feedback while a document is being ingested or a question is being answered (e.g. "Embedding document...", "Searching knowledge base...").
+- **File-based ingestion** — currently only raw pasted text is supported; add `.pdf`, `.docx`, and `.txt` upload support instead of requiring manual copy-paste.
+- **Chat memory window** — only the last 3 conversation turns are fetched for context; this lookback window could be increased (or made configurable) for longer, more coherent multi-turn conversations.
+- **Streaming answers** — the frontend currently fakes a typewriter effect after the full answer arrives; true token-level streaming from the backend would feel more responsive.
+- **Document editing** — no way to update an existing document's content/category without deleting and re-ingesting it.
+- **Authentication** — there's currently no user-level auth; anyone with the URL can ingest, delete, or query documents. The `/admin/rebuild-index` route is the only protected endpoint.
+- **Pagination** — `/documents` and `/chat-history` return everything at once; pagination would help as data grows.
 
 ---
+
+## Site Link
+
+You can check the RAG Company Assistant here: 
+[rag-company-assistant.vercel.app](https://rag-company-assistant.vercel.app)
