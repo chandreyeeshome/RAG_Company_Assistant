@@ -5,19 +5,20 @@ A full-stack **Retrieval-Augmented Generation (RAG)** chatbot that lets you inge
 
 ---
 
-## 🎥 [Demo Video](https://www.loom.com/share/65868e2f77124efba7e999d20f3f0290)
-
-> Watch the demo at **1.5x speed** for the best experience.
+## 🎥 Website Walkthrough
+ 
+Check out the [demo video](https://www.loom.com/share/65868e2f77124efba7e999d20f3f0290) — best watched at **1.5x speed**.
 
 ---
 
-## Screenshots
+## Sneak-Peek
 
-| Chat Page | Documents Page |
-|---|---|
-| ![Chat Page](assets/chat-page.png) | ![Documents Page](assets/documents-page.png) |
+### Chat Page
+![Chat Page](assets/chat-page.png)
+ 
+### Documents Page
+![Documents Page](assets/documents-page.png)
 
-> Add your two screenshots to an `assets/` folder in the repo root, named `chat-page.png` and `documents-page.png` (or update the paths above to match your filenames).
 
 ---
 
